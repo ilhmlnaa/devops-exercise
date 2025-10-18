@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    name: Build
+    name: Deploy and Run Jest Test
     environment: AWS
     runs-on: ubuntu-latest
     steps:
