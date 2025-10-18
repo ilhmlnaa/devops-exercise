@@ -6,6 +6,8 @@ pipeline {
         USERNAME = 'ilham'
         PORT = '22'
         PROJECT_DIR = '/home/ilham/projects/devops-exercise'
+        BRANCH = 'notesapp-consumer'
+        GIT_REPO = 'https://github.com/your-org/your-repo.git'  // Ganti dengan repo kamu
     }
 
     stages {
@@ -14,47 +16,53 @@ pipeline {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'ilhmlnaa-tuf-key', keyFileVariable: 'KEY')]) {
 
-                        // Tambahkan host ke known_hosts agar tidak gagal verifikasi
+                        // Tambah host ke known_hosts
                         sh """
                             mkdir -p ~/.ssh
                             ssh-keyscan -p ${PORT} ${HOST} >> ~/.ssh/known_hosts
                         """
 
-                        def beforePull = sh(script: '''
-                            ssh -i $KEY -p 22 $USERNAME@$HOST '
-                                cd $PROJECT_DIR
+                        // Ambil commit hash sebelum pull
+                        def beforePull = sh(script: """
+                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} << 'EOF'
+                                cd ${PROJECT_DIR} || exit 1
                                 git rev-parse HEAD
-                            '
-                        ''', returnStdout: true).trim()
+                            EOF
+                        """, returnStdout: true).trim()
 
-                        sh '''
-                            ssh -i $KEY -p 22 $USERNAME@$HOST '
-                                cd $PROJECT_DIR
-                                git pull origin notesapp-consumer
-                            '
-                        '''
+                        // Git pull untuk ambil update dari branch
+                        sh """
+                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} << 'EOF'
+                                cd ${PROJECT_DIR} || exit 1
+                                git pull origin ${BRANCH}
+                            EOF
+                        """
 
-                        def afterPull = sh(script: '''
-                            ssh -i $KEY -p 22 $USERNAME@$HOST '
-                                cd $PROJECT_DIR
+                        // Ambil commit hash sesudah pull
+                        def afterPull = sh(script: """
+                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} << 'EOF'
+                                cd ${PROJECT_DIR} || exit 1
                                 git rev-parse HEAD
-                            '
-                        ''', returnStdout: true).trim()
+                            EOF
+                        """, returnStdout: true).trim()
 
                         if (beforePull == afterPull) {
-                            echo "No new changes detected! Skipping tests."
+                            echo "✅ No new changes detected. Skipping tests."
                             currentBuild.result = 'SUCCESS'
                         } else {
-                            echo "New changes detected. Running tests..."
-                            sh '''
-                                ssh -i $KEY -p 22 $USERNAME@$HOST '
-                                    cd $PROJECT_DIR
-                                    source ~/.nvm/nvm.sh
+                            echo "🔍 New changes detected. Running tests..."
+
+                            // Jalankan npm install, lint, dan test
+                            sh """
+                                ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} << 'EOF'
+                                    cd ${PROJECT_DIR} || exit 1
+                                    export NVM_DIR="\$HOME/.nvm"
+                                    [ -s "\$NVM_DIR/nvm.sh" ] && \\. "\$NVM_DIR/nvm.sh"
                                     npm ci
                                     npm run lint
                                     npm run test
-                                '
-                            '''
+                                EOF
+                            """
                         }
                     }
                 }
@@ -68,13 +76,14 @@ pipeline {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'ilhmlnaa-tuf-key', keyFileVariable: 'KEY')]) {
-                        echo "Deploying application to AWS EC2..."
-                        sh '''
-                            ssh -i $KEY -p 22 $USERNAME@$HOST '
-                                cd $PROJECT_DIR
+                        echo "🚀 Deploying application..."
+
+                        sh """
+                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} << 'EOF'
+                                cd ${PROJECT_DIR} || exit 1
                                 pm2 restart notesapp-consumer
-                            '
-                        '''
+                            EOF
+                        """
                     }
                 }
             }
@@ -83,15 +92,13 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline finished."
+            echo "📦 Pipeline finished."
         }
-
         success {
-            echo "Deployment successful!"
+            echo "✅ Deployment successful!"
         }
-
         failure {
-            echo "Deployment failed."
+            echo "❌ Deployment failed."
         }
     }
 }
