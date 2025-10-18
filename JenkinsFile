@@ -2,11 +2,9 @@ pipeline {
     agent any
 
     environment {
-        NVM_DIR = "$HOME/.nvm"
-        HOST = '47.129.44.226'  
+        HOST = '47.129.44.226'
         USERNAME = 'ilham'
-        KEY = credentials('ilhmlnaa-tuf-key')     
-        PORT = '22'  
+        PORT = '22'
         PROJECT_DIR = '/home/ilham/projects/devops-exercise'
     }
 
@@ -14,29 +12,50 @@ pipeline {
         stage('Check for changes and run tests') {
             steps {
                 script {
-                    def beforePull = sh(script: """
-                        ssh -i ${KEY} -p ${PORT} ${USERNAME}@${HOST} '
-                            cd ${PROJECT_DIR}
-                            git rev-parse HEAD
-                        '
-                    """, returnStdout: true).trim()
+                    withCredentials([sshUserPrivateKey(credentialsId: 'ilhmlnaa-tuf-key', keyFileVariable: 'KEY')]) {
 
-                    sh "ssh -i ${KEY} -p ${PORT} ${USERNAME}@${HOST} 'cd ${PROJECT_DIR} && git pull origin notesapp-consumer'"
+                        // Tambahkan host ke known_hosts agar tidak gagal verifikasi
+                        sh """
+                            mkdir -p ~/.ssh
+                            ssh-keyscan -p ${PORT} ${HOST} >> ~/.ssh/known_hosts
+                        """
 
-                    def afterPull = sh(script: """
-                        ssh -i ${KEY} -p ${PORT} ${USERNAME}@${HOST} '
-                            cd ${PROJECT_DIR}
-                            git rev-parse HEAD
-                        '
-                    """, returnStdout: true).trim()
+                        def beforePull = sh(script: '''
+                            ssh -i $KEY -p 22 $USERNAME@$HOST '
+                                cd $PROJECT_DIR
+                                git rev-parse HEAD
+                            '
+                        ''', returnStdout: true).trim()
 
-                    if (beforePull == afterPull) {
-                        echo "No new changes detected!. Skipping tests."
-                        currentBuild.result = 'SUCCESS'
-                    } else {
-                        echo "New changes detected. Running tests..."
-                        sh "ssh -i ${KEY} -p ${PORT} ${USERNAME}@${HOST} 'cd ${PROJECT_DIR} && npm ci && npm run lint && npm run test'"
-                        currentBuild.result = 'SUCCESS'
+                        sh '''
+                            ssh -i $KEY -p 22 $USERNAME@$HOST '
+                                cd $PROJECT_DIR
+                                git pull origin notesapp-consumer
+                            '
+                        '''
+
+                        def afterPull = sh(script: '''
+                            ssh -i $KEY -p 22 $USERNAME@$HOST '
+                                cd $PROJECT_DIR
+                                git rev-parse HEAD
+                            '
+                        ''', returnStdout: true).trim()
+
+                        if (beforePull == afterPull) {
+                            echo "No new changes detected! Skipping tests."
+                            currentBuild.result = 'SUCCESS'
+                        } else {
+                            echo "New changes detected. Running tests..."
+                            sh '''
+                                ssh -i $KEY -p 22 $USERNAME@$HOST '
+                                    cd $PROJECT_DIR
+                                    source ~/.nvm/nvm.sh
+                                    npm ci
+                                    npm run lint
+                                    npm run test
+                                '
+                            '''
+                        }
                     }
                 }
             }
@@ -44,12 +63,19 @@ pipeline {
 
         stage('Deploy Application') {
             when {
-                expression { currentBuild.result == 'SUCCESS' }
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
             }
             steps {
                 script {
-                    echo "Deploying application to AWS EC2..."
-                    sh "ssh -i ${KEY} -p ${PORT} ${USERNAME}@${HOST} 'cd ${PROJECT_DIR} && pm2 restart notesapp-consumer'"
+                    withCredentials([sshUserPrivateKey(credentialsId: 'ilhmlnaa-tuf-key', keyFileVariable: 'KEY')]) {
+                        echo "Deploying application to AWS EC2..."
+                        sh '''
+                            ssh -i $KEY -p 22 $USERNAME@$HOST '
+                                cd $PROJECT_DIR
+                                pm2 restart notesapp-consumer
+                            '
+                        '''
+                    }
                 }
             }
         }
