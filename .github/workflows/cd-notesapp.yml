@@ -25,5 +25,5 @@ jobs:
             git pull origin notesapp-consumer
             git status
             npm ci
-            npm run tesst
+            npm run test
             pm2 restart notesapp-consumer
