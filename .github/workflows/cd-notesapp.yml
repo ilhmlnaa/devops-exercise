@@ -5,8 +5,9 @@ on:
     branches: [ notesapp-consumer ]
 
 jobs:
-  build:
+  deploy:
     name: Build
+    environment: AWS
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to aws ec2 using ssh
