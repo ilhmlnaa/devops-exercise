@@ -4,8 +4,8 @@ pipeline {
     environment {
         NVM_DIR = "$HOME/.nvm"
         HOST = '47.129.44.226'  
-        USERNAME = ilham
-        KEY = credentials('ilhmlnaa')     
+        USERNAME = 'ilham'
+        KEY = credentials('ilhmlnaa-tuf-key')     
         PORT = '22'  
         PROJECT_DIR = '/home/ilham/projects/devops-exercise'
     }
@@ -14,7 +14,6 @@ pipeline {
         stage('Check for changes and run tests') {
             steps {
                 script {
-                    // SSH ke server untuk cek perubahan dan jalankan tests
                     def beforePull = sh(script: """
                         ssh -i ${KEY} -p ${PORT} ${USERNAME}@${HOST} '
                             cd ${PROJECT_DIR}
@@ -36,7 +35,6 @@ pipeline {
                         currentBuild.result = 'SUCCESS'
                     } else {
                         echo "New changes detected. Running tests..."
-                        // Jalankan linting dan test
                         sh "ssh -i ${KEY} -p ${PORT} ${USERNAME}@${HOST} 'cd ${PROJECT_DIR} && npm ci && npm run lint && npm run test'"
                         currentBuild.result = 'SUCCESS'
                     }
@@ -50,7 +48,6 @@ pipeline {
             }
             steps {
                 script {
-                    // Deploy aplikasi hanya jika ada perubahan dan tests berhasil
                     echo "Deploying application to AWS EC2..."
                     sh "ssh -i ${KEY} -p ${PORT} ${USERNAME}@${HOST} 'cd ${PROJECT_DIR} && pm2 restart notesapp-consumer'"
                 }
