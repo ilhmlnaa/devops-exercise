@@ -1,0 +1,25 @@
+name: CD
+
+on: 
+  push:
+    branches: [ notesapp-consumer ]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to aws ec2 using ssh
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd /home/ilham/projects/devops-exercise
+            git pull origin notesapp-consumer
+            git status
+            npm ci
+            npm run tesst
+            pm2 restart notesapp-consumer
