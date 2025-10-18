@@ -32,7 +32,7 @@ pipeline {
                     """, returnStdout: true).trim()
 
                     if (beforePull == afterPull) {
-                        echo "No new changes detected. Skipping tests."
+                        echo "No new changes detected!. Skipping tests."
                         currentBuild.result = 'SUCCESS'
                     } else {
                         echo "New changes detected. Running tests..."
