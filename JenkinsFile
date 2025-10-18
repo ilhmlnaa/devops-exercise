@@ -59,7 +59,7 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Deploy Application') {
             when {
                 expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
@@ -71,12 +71,16 @@ pipeline {
 
                         sh """
                             ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} \\
-                                'cd ${PROJECT_DIR} && pm2 restart notesapp-consumer'
+                                'set -e && cd ${PROJECT_DIR} && \\
+                                export NVM_DIR="\$HOME/.nvm" && \\
+                                [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh" && \\
+                                pm2 restart notesapp-consumer'
                         """
                     }
                 }
             }
         }
+
     }
 
     post {
