@@ -7,7 +7,7 @@ pipeline {
         PORT = '22'
         PROJECT_DIR = '/home/ilham/projects/devops-exercise'
         BRANCH = 'notesapp-consumer'
-        GIT_REPO = 'https://github.com/your-org/your-repo.git'  // Ganti dengan repo kamu
+        GIT_REPO = 'https://github.com/your-org/your-repo.git'  // Ganti sesuai repositori kamu
     }
 
     stages {
@@ -16,33 +16,28 @@ pipeline {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'ilhmlnaa-tuf-key', keyFileVariable: 'KEY')]) {
 
-                        // Tambah host ke known_hosts
+                        // Tambahkan host ke known_hosts
                         sh """
                             mkdir -p ~/.ssh
                             ssh-keyscan -p ${PORT} ${HOST} >> ~/.ssh/known_hosts
                         """
 
-                        // Ambil commit hash sebelum pull
+                        // Ambil commit hash sebelum git pull
                         def beforePull = sh(script: """
                             ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} \\
                                 'cd ${PROJECT_DIR} && git rev-parse HEAD'
                         """, returnStdout: true).trim()
 
-
-                        // Git pull untuk ambil update dari branch
+                        // Git pull untuk ambil update terbaru
                         sh """
-                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} << 'EOF'
-                                cd ${PROJECT_DIR} || exit 1
-                                git pull origin ${BRANCH}
-                            EOF
+                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} \\
+                                'cd ${PROJECT_DIR} && git pull origin ${BRANCH}'
                         """
 
                         // Ambil commit hash sesudah pull
                         def afterPull = sh(script: """
-                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} << 'EOF'
-                                cd ${PROJECT_DIR} || exit 1
-                                git rev-parse HEAD
-                            EOF
+                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} \\
+                                'cd ${PROJECT_DIR} && git rev-parse HEAD'
                         """, returnStdout: true).trim()
 
                         if (beforePull == afterPull) {
@@ -53,14 +48,11 @@ pipeline {
 
                             // Jalankan npm install, lint, dan test
                             sh """
-                                ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} << 'EOF'
-                                    cd ${PROJECT_DIR} || exit 1
-                                    export NVM_DIR="\$HOME/.nvm"
-                                    [ -s "\$NVM_DIR/nvm.sh" ] && \\. "\$NVM_DIR/nvm.sh"
-                                    npm ci
-                                    npm run lint
-                                    npm run test
-                                EOF
+                                ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} \\
+                                    'set -e && cd ${PROJECT_DIR} && \\
+                                    export NVM_DIR="\$HOME/.nvm" && \\
+                                    [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh" && \\
+                                    npm ci && npm run lint && npm test'
                             """
                         }
                     }
@@ -78,10 +70,8 @@ pipeline {
                         echo "🚀 Deploying application..."
 
                         sh """
-                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} << 'EOF'
-                                cd ${PROJECT_DIR} || exit 1
-                                pm2 restart notesapp-consumer
-                            EOF
+                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} \\
+                                'cd ${PROJECT_DIR} && pm2 restart notesapp-consumer'
                         """
                     }
                 }
