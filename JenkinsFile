@@ -24,11 +24,10 @@ pipeline {
 
                         // Ambil commit hash sebelum pull
                         def beforePull = sh(script: """
-                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} << 'EOF'
-                                cd ${PROJECT_DIR} || exit 1
-                                git rev-parse HEAD
-                            EOF
+                            ssh -i \$KEY -p ${PORT} ${USERNAME}@${HOST} \\
+                                'cd ${PROJECT_DIR} && git rev-parse HEAD'
                         """, returnStdout: true).trim()
+
 
                         // Git pull untuk ambil update dari branch
                         sh """
