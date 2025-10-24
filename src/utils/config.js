@@ -1,8 +1,6 @@
 const config = {
   database: {
-    // Database URL (connection string) - prioritas utama
     url: process.env.DATABASE_URL,
-    // Individual config sebagai fallback
     host: process.env.DB_HOST || process.env.PGHOST,
     port: process.env.DB_PORT || process.env.PGPORT,
     user: process.env.DB_USER || process.env.PGUSER,
