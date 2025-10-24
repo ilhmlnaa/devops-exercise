@@ -9,9 +9,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -35,5 +32,5 @@ jobs:
         run: |
           echo "Triggering Coolify deployment..."
           curl -X POST "https://coolify.hamdiv.me/api/v1/deploy?uuid=pok8s0kwoggosgc8os00sskw&force=false" \
-          -H "Authorization: ${{ secrets.COOLIFY_TOKEN }}" \
+          -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
           -H "Content-Type: application/json"
