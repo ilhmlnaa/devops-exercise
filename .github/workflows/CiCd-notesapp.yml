@@ -3,6 +3,12 @@ name: Test and Deploy with Coolify
 on:
   push:
     branches: [notesapp-consumer-coolify]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Paksa deployment (true/false)"
+        required: false
+        default: "false"
 
 jobs:
   test-and-deploy:
@@ -33,7 +39,8 @@ jobs:
       - name: Trigger Coolify deployment
         if: success()
         run: |
-          echo "Triggering Coolify deployment..."
-          curl -X POST "https://coolify.hamdiv.me/api/v1/deploy?uuid=pok8s0kwoggosgc8os00sskw&force=false" \
+          FORCE=${{ github.event.inputs.force || 'false' }}
+          echo "Triggering Coolify deployment (force=${FORCE})..."
+          curl -X POST "https://coolify.hamdiv.me/api/v1/deploy?uuid=pok8s0kwoggosgc8os00sskw&force=${FORCE}" \
           -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
           -H "Content-Type: application/json"
